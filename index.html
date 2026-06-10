@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jellyfin Avatar Packs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #111;
+      --surface:  #1c1c1c;
+      --border:   rgba(255,255,255,0.1);
+      --text:     #f0f0f0;
+      --muted:    #666;
+      --radius:   8px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(17,17,17,0.9);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .site-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .site-sub {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    /* ── Main ── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 80px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-bottom: 28px;
+      padding-bottom: 2px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+      font-family: 'DM Sans', sans-serif;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      border-color: rgba(255,255,255,0.3);
+      color: var(--text);
+    }
+
+    .tab.active {
+      background: var(--text);
+      border-color: var(--text);
+      color: #111;
+    }
+
+    .tab .badge {
+      font-size: 11px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.1);
+      line-height: 1.5;
+    }
+
+    .tab.active .badge {
+      background: rgba(0,0,0,0.15);
+    }
+
+    /* ── Section ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .section-left {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .section-meta {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 300;
+    }
+
+    /* ── Download pack button ── */
+    .dl-pack-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+
+    .dl-pack-btn:hover:not(:disabled) {
+      background: rgba(255,255,255,0.07);
+      border-color: rgba(255,255,255,0.4);
+    }
+
+    .dl-pack-btn:disabled {
+      cursor: default;
+      opacity: 0.7;
+    }
+
+    .dl-pack-btn .progress-text {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px;
+    }
+
+    /* ── Card ── */
+    .card {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      animation: fadeIn .25s ease both;
+      opacity: 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity .15s;
+      padding: 10px;
+    }
+
+    .card:hover .card-overlay {
+      opacity: 1;
+    }
+
+    .card-name {
+      font-size: 10px;
+      color: rgba(255,255,255,0.65);
+      text-align: center;
+      line-height: 1.4;
+      word-break: break-all;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .dl-img-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: #fff;
+      color: #111;
+      font-size: 12px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity .1s;
+      white-space: nowrap;
+    }
+    .dl-img-btn:hover  { opacity: .85; }
+    .dl-img-btn:active { opacity: .65; }
+
+    /* ── State (loading / error) ── */
+    .state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 220px;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      flex-direction: column;
+      grid-column: 1 / -1;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 560px) {
+      main { padding: 18px 14px 60px; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 7px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <span class="site-title">Jellyfin Avatars</span>
+    <span class="site-sub">Community avatar packs</span>
+    <a href="https://github.com/cedev-1/jellyfin-avatars" target="_blank" rel="noopener"
+       style="margin-left:auto;color:var(--muted);transition:color .15s;display:flex;align-items:center;"
+       onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'"
+       aria-label="GitHub repository">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482
+          0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.154-1.11-1.462-1.11-1.462
+          -.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832
+          .092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683
+          -.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0
+          0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028
+          1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012
+          2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+      </svg>
+    </a>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs" id="tabs"></nav>
+  <div id="sections"></div>
+</main>
+
+<script>
+  const REPO = 'cedev-1/jellyfin-avatars';
+  const API  = `https://api.github.com/repos/${REPO}/contents/`;
+  const IMG  = /\.(png|jpe?g|gif|webp|svg|avif)$/i;
+
+  const PACKS = [
+    { id: 'dp',          label: 'Disney+' },
+    { id: 'nf',          label: 'Netflix' },
+    { id: 'one',         label: 'Xbox One' },
+    { id: 'playstation', label: 'PlayStation' },
+    { id: 'pp',          label: 'Paramount+' },
+    { id: 'pv',          label: 'Prime Video' },
+    { id: 'Steam',       label: 'Steam' },
+    { id: 'sonny',       label: 'Sonny Angels' },
+  ];
+
+  const cache  = {};     // id -> image file list
+  let   active = PACKS[0].id;
+
+  const tabsEl = document.getElementById('tabs');
+  const secsEl = document.getElementById('sections');
+
+  // Build tabs + sections skeleton
+  PACKS.forEach((pack, i) => {
+    // Tab
+    const tab = document.createElement('button');
+    tab.className = 'tab' + (i === 0 ? ' active' : '');
+    tab.dataset.id = pack.id;
+    tab.innerHTML  = `${pack.label} <span class="badge" id="badge-${pack.id}">…</span>`;
+    tab.addEventListener('click', () => switchPack(pack.id));
+    tabsEl.appendChild(tab);
+
+    // Section
+    const sec = document.createElement('div');
+    sec.className = 'section' + (i === 0 ? ' active' : '');
+    sec.id = `sec-${pack.id}`;
+    sec.innerHTML = `
+      <div class="section-header">
+        <div class="section-left">
+          <h2 class="section-title">${pack.label}</h2>
+          <span class="section-meta" id="meta-${pack.id}"></span>
+        </div>
+        <button class="dl-pack-btn" id="dlpack-${pack.id}" disabled>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M6.5 1v8M3 7l3.5 3.5L10 7M1 12h11"
+              stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Download pack
+        </button>
+      </div>
+      <div class="grid" id="grid-${pack.id}">
+        <div class="state"><div class="spinner"></div>Loading…</div>
+      </div>`;
+    secsEl.appendChild(sec);
+  });
+
+  // Switch active pack
+  function switchPack(id) {
+    if (active === id) return;
+    active = id;
+    tabsEl.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.id === id));
+    secsEl.querySelectorAll('.section').forEach(s =>
+      s.classList.toggle('active', s.id === `sec-${id}`));
+    loadPack(id);
+  }
+
+  // Load + render a pack
+  async function loadPack(id) {
+    if (cache[id]) { renderGrid(id); return; }
+
+    const grid  = document.getElementById(`grid-${id}`);
+    const badge = document.getElementById(`badge-${id}`);
+    const meta  = document.getElementById(`meta-${id}`);
+    const dlBtn = document.getElementById(`dlpack-${id}`);
+
+    try {
+      const res = await fetch(`${API}${encodeURIComponent(id)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const files  = await res.json();
+      const images = files.filter(f => f.type === 'file' && IMG.test(f.name));
+      cache[id] = images;
+
+      const n = images.length;
+      badge.textContent = n;
+      meta.textContent  = `${n} avatar${n !== 1 ? 's' : ''}`;
+      dlBtn.disabled    = false;
+      dlBtn.addEventListener('click', () => downloadPack(id));
+
+      renderGrid(id);
+    } catch (err) {
+      console.error(err);
+      badge.textContent = '!';
+      grid.innerHTML = `<div class="state">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="10" cy="10" r="8"/><path d="M10 6.5v4M10 13h.01"/>
+        </svg>
+        Failed to load — check connection or GitHub rate limit
+      </div>`;
+    }
+  }
+
+  // Render image grid for an already-cached pack
+  function renderGrid(id) {
+    const grid = document.getElementById(`grid-${id}`);
+    if (!grid || !grid.querySelector('.state')) return; // already rendered
+
+    const images = cache[id];
+    grid.innerHTML = '';
+
+    images.forEach((file, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.animationDelay = `${Math.min(i * 15, 450)}ms`;
+
+      const img = document.createElement('img');
+      img.src      = file.download_url;
+      img.alt      = file.name;
+      img.loading  = 'lazy';
+      img.decoding = 'async';
+
+      const overlay = document.createElement('div');
+      overlay.className = 'card-overlay';
+
+      const name = document.createElement('span');
+      name.className   = 'card-name';
+      name.textContent = file.name;
+
+      const btn = document.createElement('button');
+      btn.className = 'dl-img-btn';
+      btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+        <path d="M5.5 1v7M2.5 5.5l3 3 3-3M1 9.5h9"
+          stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg> Download`;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        downloadFile(file.download_url, file.name);
+      });
+
+      overlay.appendChild(name);
+      overlay.appendChild(btn);
+      card.appendChild(img);
+      card.appendChild(overlay);
+      grid.appendChild(card);
+    });
+  }
+
+  // Download a single image as blob
+  async function downloadFile(url, filename) {
+    try {
+      const blob = await fetch(url).then(r => r.blob());
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch {
+      window.open(url, '_blank');
+    }
+  }
+
+  // Download entire pack as ZIP
+  async function downloadPack(id) {
+    const images = cache[id];
+    if (!images || !images.length) return;
+
+    const btn = document.getElementById(`dlpack-${id}`);
+    btn.disabled = true;
+
+    const pack = PACKS.find(p => p.id === id);
+    const zip  = new JSZip();
+    const folder = zip.folder(id);
+
+    let done = 0;
+    const total = images.length;
+
+    const updateBtn = () => {
+      btn.innerHTML = `<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>
+        <span>${done} / ${total}</span>`;
+    };
+    updateBtn();
+
+    // Fetch all images with concurrency limit
+    const CONCURRENCY = 6;
+    let index = 0;
+
+    async function worker() {
+      while (index < images.length) {
+        const file = images[index++];
+        try {
+          const blob = await fetch(file.download_url).then(r => r.blob());
+          folder.file(file.name, blob);
+        } catch {
+          // skip failed file silently
+        }
+        done++;
+        updateBtn();
+      }
+    }
+
+    const workers = Array.from({ length: CONCURRENCY }, () => worker());
+    await Promise.all(workers);
+
+    // Generate and save zip
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href     = URL.createObjectURL(zipBlob);
+    a.download = `jellyfin-avatars-${id}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+
+    // Reset button
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 1v8M3 7l3.5 3.5L10 7M1 12h11"
+        stroke="currentColor" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </svg> Download pack`;
+    btn.addEventListener('click', () => downloadPack(id), { once: true });
+  }
+
+  // Load first pack immediately
+  loadPack(PACKS[0].id);
+
+  // Silently prefetch all other packs in background
+  PACKS.slice(1).forEach(pack => {
+    fetch(`${API}${encodeURIComponent(pack.id)}`)
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(files => {
+        const images = files.filter(f => f.type === 'file' && IMG.test(f.name));
+        cache[pack.id] = images;
+        const n = images.length;
+        const badgeEl = document.getElementById(`badge-${pack.id}`);
+        const metaEl  = document.getElementById(`meta-${pack.id}`);
+        const dlBtn   = document.getElementById(`dlpack-${pack.id}`);
+        if (badgeEl) badgeEl.textContent = n;
+        if (metaEl)  metaEl.textContent  = `${n} avatar${n !== 1 ? 's' : ''}`;
+        if (dlBtn) {
+          dlBtn.disabled = false;
+          dlBtn.addEventListener('click', () => downloadPack(pack.id), { once: true });
+        }
+      })
+      .catch(() => {
+        const el = document.getElementById(`badge-${pack.id}`);
+        if (el) el.textContent = '–';
+      });
+  });
+</script>
+
+</body>
+</html>
