@@ -13,6 +13,7 @@ Each folder corresponds to an avatar pack:
 - `pp` — Paramonth Plus
 - `pv` — Prime Video
 - `Steam` — Steam
+- `Sonny` — Sonny Angels
 
 ## Usage
 
