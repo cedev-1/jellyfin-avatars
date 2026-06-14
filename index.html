@@ -266,6 +266,25 @@
     .dl-img-btn:hover  { opacity: .85; }
     .dl-img-btn:active { opacity: .65; }
 
+    .copy-url-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: transparent;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid rgba(255,255,255,0.4);
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: background .1s, border-color .1s;
+      white-space: nowrap;
+    }
+    .copy-url-btn:hover  { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.7); }
+    .copy-url-btn.copied { background: rgba(255,255,255,0.15); border-color: #fff; }
+
     /* ── State (loading / error) ── */
     .state {
       display: flex;
@@ -466,8 +485,34 @@
         downloadFile(file.download_url, file.name);
       });
 
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-url-btn';
+      copyBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+        <rect x="1" y="3.5" width="6.5" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M3.5 3.5V2.5A1.5 1.5 0 0 1 5 1h3.5A1.5 1.5 0 0 1 10 2.5V6A1.5 1.5 0 0 1 8.5 7.5H7.5"
+          stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg> Copy URL`;
+      copyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(file.download_url).then(() => {
+          copyBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <path d="M1.5 5.5l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg> Copied!`;
+          copyBtn.classList.add('copied');
+          setTimeout(() => {
+            copyBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <rect x="1" y="3.5" width="6.5" height="6.5" rx="1.2" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M3.5 3.5V2.5A1.5 1.5 0 0 1 5 1h3.5A1.5 1.5 0 0 1 10 2.5V6A1.5 1.5 0 0 1 8.5 7.5H7.5"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg> Copy URL`;
+            copyBtn.classList.remove('copied');
+          }, 1800);
+        });
+      });
+
       overlay.appendChild(name);
       overlay.appendChild(btn);
+      overlay.appendChild(copyBtn);
       card.appendChild(img);
       card.appendChild(overlay);
       grid.appendChild(card);
